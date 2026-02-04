@@ -7,20 +7,19 @@ const nodemailer = require("nodemailer");
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-// ---------- FILE PATH ----------
 const REMINDERS_FILE = path.join(__dirname, "reminders.json");
 
-// ---------- MIDDLEWARE ----------
+// Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static("public"));
 
-// ---------- ENSURE FILE EXISTS ----------
+// Ensure reminders file exists
 if (!fs.existsSync(REMINDERS_FILE)) {
   fs.writeFileSync(REMINDERS_FILE, JSON.stringify([]));
 }
 
-// ---------- EMAIL SETUP ----------
+// Email transporter
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
@@ -29,19 +28,17 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// ---------- ROUTES ----------
-
-// Serve UI
+// Home page
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// Handle form submit
+// Add reminder
 app.post("/add-reminder", (req, res) => {
   const { clientName, clientEmail, caseTitle, reminderTime } = req.body;
 
   if (!clientEmail || !reminderTime) {
-    return res.status(400).send("Missing required fields");
+    return res.status(400).send("Email and time required");
   }
 
   const reminders = JSON.parse(fs.readFileSync(REMINDERS_FILE));
@@ -56,49 +53,46 @@ app.post("/add-reminder", (req, res) => {
   });
 
   fs.writeFileSync(REMINDERS_FILE, JSON.stringify(reminders, null, 2));
-
   res.send("Reminder saved successfully");
 });
 
-// ---------- CRON JOB (RUNS EVERY MINUTE) ----------
+// Cron job – runs every minute
 cron.schedule("* * * * *", () => {
   const reminders = JSON.parse(fs.readFileSync(REMINDERS_FILE));
   const now = new Date();
 
-  reminders.forEach((reminder) => {
-    if (!reminder.sent && new Date(reminder.reminderTime) <= now) {
-      const mailOptions = {
-        from: process.env.EMAIL,
-        to: reminder.clientEmail,
-        subject: "Case Reminder",
-        text: `Hello ${reminder.clientName || "Client"},
-
+  reminders.forEach((r) => {
+    if (!r.sent && new Date(r.reminderTime) <= now) {
+      transporter.sendMail(
+        {
+          from: process.env.EMAIL,
+          to: r.clientEmail,
+          subject: "Case Reminder",
+          text: `Hello ${r.clientName || "Client"},
+          
 This is a reminder for your case:
-${reminder.caseTitle || "Scheduled Case"}
+${r.caseTitle || "Scheduled Case"}
 
-Date & Time:
-${reminder.reminderTime}
+Time: ${r.reminderTime}
 
-— Nyay-Sarathi`,
-      };
-
-      transporter.sendMail(mailOptions, (err) => {
-        if (!err) {
-          reminder.sent = true;
-          fs.writeFileSync(
-            REMINDERS_FILE,
-            JSON.stringify(reminders, null, 2)
-          );
-          console.log("Reminder email sent to", reminder.clientEmail);
-        } else {
-          console.error("Email error:", err.message);
+– Nyay-Sarathi`,
+        },
+        (err) => {
+          if (!err) {
+            r.sent = true;
+            fs.writeFileSync(
+              REMINDERS_FILE,
+              JSON.stringify(reminders, null, 2)
+            );
+            console.log("Email sent to", r.clientEmail);
+          }
         }
-      });
+      );
     }
   });
 });
 
-// ---------- START SERVER ----------
+// Start server
 app.listen(PORT, () => {
   console.log("Server running on port", PORT);
 });
