@@ -1,0 +1,15 @@
+{
+  "name": "reminder-app",
+  "version": "1.0.0",
+  "description": "Client reminder app with email notifications",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "body-parser": "^1.20.3",
+    "express": "^4.21.2",
+    "node-cron": "^3.0.3",
+    "nodemailer": "^6.9.16"
+  }
+}
