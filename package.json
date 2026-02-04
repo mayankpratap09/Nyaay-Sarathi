@@ -1,7 +1,7 @@
 {
   "name": "nyay-sarathi",
   "version": "1.0.0",
-  "description": "Lawyer client reminder app",
+  "description": "Lawyer client reminder app with email notifications",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
